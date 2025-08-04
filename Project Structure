@@ -1,0 +1,12 @@
+time-travel-news-analyzer/
+├── data/
+│   └── nyt_articles.csv
+├── notebooks/
+│   └── 01_exploration.ipynb
+├── app/
+│   └── app.py  # Streamlit app (optional)
+├── scripts/
+│   └── process_data.py
+├── requirements.txt
+├── README.md
+└── visualize.py
