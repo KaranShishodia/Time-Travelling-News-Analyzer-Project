@@ -1,0 +1,118 @@
+# Time-Traveling News Analyzer
+# Author: Karan
+
+#  Importing Libraries
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from textblob import TextBlob
+from wordcloud import WordCloud
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix
+import re
+import nltk
+nltk.download('punkt')
+
+
+
+#  Sample Dataset
+
+from io import StringIO
+
+data = StringIO("""
+date,headline
+2015-06-24,Artificial Intelligence transforming the medical field
+2016-09-12,Climate change policies gain momentum globally
+2017-04-30,AI may threaten some human jobs in near future
+2018-02-18,Governments adopt new climate change resolutions
+2019-11-25,Machine learning revolutionizing healthcare
+2020-01-20,AI helps detect diseases earlier than before
+2021-06-30,Climate change linked to extreme weather events
+2022-03-18,AI now beats doctors in disease diagnosis
+2023-09-14,Debates rise over ethical use of artificial intelligence
+""")
+
+df = pd.read_csv(data, parse_dates=['date'])
+df['year'] = df['date'].dt.year
+
+
+
+#  Clean   Headlines
+
+def clean_text(text):
+    text = re.sub(r'[^a-zA-Z\s]', '', text)
+    text = text.lower()
+    return text
+
+df['clean_headline'] = df['headline'].apply(clean_text)
+
+
+
+#  Sentiment Analysis
+
+df['sentiment'] = df['clean_headline'].apply(lambda x: TextBlob(x).sentiment.polarity)
+df['label'] = df['sentiment'].apply(lambda x: 1 if x > 0 else (0 if x == 0 else -1))
+
+
+
+#  Sentiment Trend Over Time
+
+plt.figure(figsize=(10, 5))
+sns.lineplot(data=df.groupby('year')['sentiment'].mean().reset_index(), x='year', y='sentiment', marker='o')
+plt.title("Average Sentiment Over Years")
+plt.grid(True)
+plt.show()
+
+
+
+#  Word Cloud for All Headlines
+
+all_words = ' '.join(df['clean_headline'])
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_words)
+
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.title("Word Cloud of Headlines")
+plt.show()
+
+
+
+#  Keyword Frequency Trend
+
+keywords = ['ai', 'climate', 'machine', 'change']
+for kw in keywords:
+    df[kw] = df['clean_headline'].apply(lambda x: kw in x.split())
+
+plt.figure(figsize=(10, 6))
+for kw in keywords:
+    sns.lineplot(data=df.groupby('year')[kw].sum(), label=kw)
+plt.title("Keyword Frequency Over Time")
+plt.ylabel("Frequency")
+plt.grid()
+plt.legend()
+plt.show()
+
+
+
+#  ML Model - Sentiment Classification
+
+X = df['clean_headline']
+y = df['label']
+
+vectorizer = TfidfVectorizer()
+X_vec = vectorizer.fit_transform(X)
+
+X_train, X_test, y_train, y_test = train_test_split(X_vec, y, test_size=0.3, random_state=42)
+
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+print("Classification Report:\n", classification_report(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
